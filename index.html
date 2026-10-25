@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bakery Log</title>
+  <meta name="theme-color" content="#8a4b1f">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bakery Log">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <!-- MAP TAB -->
+    <section id="map-view" class="view active">
+      <div id="map"></div>
+
+      <div class="search-bar">
+        <form id="search-form">
+          <input id="search-input" type="search" placeholder="Search Toronto bakeries…" autocomplete="off" enterkeyhint="search">
+          <button type="submit">Search</button>
+        </form>
+        <ul id="search-results" hidden></ul>
+      </div>
+
+      <div id="fabs" class="fabs">
+        <button id="place-btn" class="fab" type="button">📍 Drop pin</button>
+        <button id="nearby-btn" class="fab" type="button">🧭 Near me</button>
+        <button id="random-btn" class="fab" type="button">🎲 Random</button>
+      </div>
+      <div id="toast" class="toast" hidden></div>
+      <div id="place-hint" class="place-hint" hidden>
+        Tap the map where the bakery is
+        <button id="place-cancel" type="button">Cancel</button>
+      </div>
+    </section>
+
+    <!-- LIST TAB -->
+    <section id="list-view" class="view">
+      <header class="list-header">
+        <h1>My bakeries</h1>
+        <button id="menu-btn" class="ghost" type="button" aria-label="Backup options">Backup</button>
+      </header>
+      <div class="segmented" id="list-filter">
+        <button type="button" data-filter="want" class="on">★ To visit <span id="count-want">0</span></button>
+        <button type="button" data-filter="visited">✓ Visited <span id="count-visited">0</span></button>
+        <button type="button" data-filter="items">🥐 Items <span id="count-items">0</span></button>
+      </div>
+      <input id="list-search" class="list-search" type="search" autocomplete="off" enterkeyhint="search">
+      <div id="sort-bar" class="sort-bar"></div>
+      <div id="list"></div>
+    </section>
+  </main>
+
+  <!-- Bakery info panel (slides up from the bottom) -->
+  <div id="sheet" class="sheet" hidden>
+    <button id="sheet-close" class="sheet-close" type="button" aria-label="Close">✕</button>
+    <div id="sheet-body"></div>
+  </div>
+
+  <nav class="tabbar">
+    <button type="button" data-tab="map-view" class="on"><span>🗺️</span>Map</button>
+    <button type="button" data-tab="list-view"><span>📋</span>List</button>
+  </nav>
+
+  <!-- "Add a bakery" pop-up -->
+  <dialog id="add-dialog">
+    <form id="add-form">
+      <h2>Add a bakery</h2>
+      <label>Name
+        <input name="name" required placeholder="e.g. Blackbird Baking Co.">
+      </label>
+      <label>Address
+        <input name="address" placeholder="Street address">
+      </label>
+      <div class="status-pick">
+        <label><input type="radio" name="status" value="want" checked><span>★ Want to visit</span></label>
+        <label><input type="radio" name="status" value="visited"><span>✓ Have visited</span></label>
+      </div>
+      <div class="row">
+        <button type="button" id="add-cancel" class="ghost">Cancel</button>
+        <button type="submit" class="primary">Add pin</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Random pick pop-up -->
+  <dialog id="random-dialog">
+    <h2>🎲 Random bakery</h2>
+    <p class="muted">Pick somewhere within 10 km of you, from:</p>
+    <button type="button" class="choice" data-source="want">
+      <strong>★ My “Want to visit” list</strong>
+      <span>One of the places you’ve saved</span>
+    </button>
+    <button type="button" class="choice" data-source="any">
+      <strong>🗺️ Any bakery</strong>
+      <span>Discover somewhere new from the map</span>
+    </button>
+    <button id="random-cancel" type="button" class="ghost wide">Cancel</button>
+  </dialog>
+
+  <!-- Backup pop-up -->
+  <dialog id="menu-dialog">
+    <h2>Backup</h2>
+    <p class="muted">Your bakeries are saved on this device only. Download a backup file now and then so you never lose them.</p>
+    <button id="export-btn" type="button" class="primary wide">Download backup</button>
+    <label class="ghost wide file-btn">Restore from backup…
+      <input id="import-input" type="file" accept="application/json,.json" hidden>
+    </label>
+    <button id="menu-close" type="button" class="ghost wide">Close</button>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#8a4b1f"/>
+  <path d="M256 420 L165 318 A125 125 0 1 1 347 318 Z" fill="#f6e7c8"/>
+  <text x="256" y="285" font-family="Helvetica, Arial" font-size="150" font-weight="bold" text-anchor="middle" fill="#8a4b1f">★</text>
+</svg>
