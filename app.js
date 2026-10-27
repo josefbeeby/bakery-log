@@ -388,6 +388,7 @@ $('#search-form').addEventListener('submit', async (e) => {
   const q = $('#search-input').value.trim();
   const list = $('#search-results');
   if (!q) { list.hidden = true; return; }
+  $('#search-input').value = ''; // ready for the next search
   $('#search-input').blur();
   list.hidden = false;
   list.innerHTML = '<li class="r-msg">Searching…</li>';
@@ -590,6 +591,7 @@ function openSheet(id, { focusNew = false, fromRandom = false } = {}) {
   renderSheet();
   sheet.hidden = false;
   sheet.scrollTop = 0;
+  fitAllNotes(); // needs the panel visible to measure
   panAboveSheet(b.lat, b.lng);
   if (focusNew) focusLatest();
 }
@@ -624,9 +626,11 @@ function renderSheet() {
   const hours = hoursToday(b);
   let html = `
     ${openedByRandom ? '<button type="button" class="reroll" data-action="reroll">🎲 Pick another</button>' : ''}
-    <input class="title-input" data-field="name" value="${esc(b.name)}" aria-label="Bakery name">
+    <input class="title-input" data-field="name" value="${esc(b.name)}" aria-label="Bakery name" autocorrect="off" spellcheck="false">
     ${b.address ? `<p class="meta">📍 ${esc(b.address)}</p>` : ''}
     ${hours ? `<p class="meta hours">🕒 ${esc(hours)}</p>` : ''}
+    ${b.status === 'visited' ? `<textarea class="bakery-notes" data-field="bakery-notes" rows="2"
+      placeholder="Notes on the bakery itself (vibe, service, seating, prices…)">${esc(b.notes || '')}</textarea>` : ''}
     <div class="status-toggle">
       <button type="button" data-action="status" data-status="want" class="want ${b.status === 'want' ? 'on' : ''}">★ Want to visit</button>
       <button type="button" data-action="status" data-status="visited" class="visited ${b.status === 'visited' ? 'on' : ''}">✓ Visited</button>
@@ -668,6 +672,7 @@ function renderSheet() {
 
   html += `<button type="button" class="danger" data-action="delete-bakery">Remove this bakery</button>`;
   sheetBody.innerHTML = html;
+  if (!sheet.hidden) fitAllNotes();
 }
 
 // Typing in a box saves straight away (no re-draw, so the keyboard stays open).
@@ -675,15 +680,23 @@ sheetBody.addEventListener('input', (e) => {
   const b = getBakery(openId);
   const field = e.target.dataset.field;
   if (!b || !field) return;
-  if (field === 'name') {
-    b.name = e.target.value;
-  } else {
+  if (field === 'name') b.name = e.target.value;
+  else if (field === 'bakery-notes') b.notes = e.target.value;
+  else {
     const it = b.items.find((i) => i.id === e.target.closest('.item').dataset.item);
     if (field === 'item-name') it.name = e.target.value;
     if (field === 'item-notes') it.notes = e.target.value;
   }
+  if (e.target.tagName === 'TEXTAREA') fitToText(e.target);
   save();
 });
+
+// Notes boxes grow to show everything you've written, instead of scrolling inside.
+function fitToText(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = `${textarea.scrollHeight + 2}px`;
+}
+const fitAllNotes = () => sheetBody.querySelectorAll('textarea').forEach(fitToText);
 
 sheetBody.addEventListener('submit', (e) => {
   if (e.target.id !== 'try-form') return;
@@ -793,7 +806,7 @@ const SEARCH_HINTS = {
 
 // Does this bakery mention the search words anywhere you've written about it?
 function bakeryMatches(b, q) {
-  const text = [b.name, b.address, ...b.wantToTry.map((t) => t.text),
+  const text = [b.name, b.address, b.notes || '', ...b.wantToTry.map((t) => t.text),
     ...b.items.flatMap((i) => [i.name, i.notes])].join(' ').toLowerCase();
   return text.includes(q);
 }
@@ -986,6 +999,21 @@ $('#import-input').addEventListener('change', async (e) => {
   } catch {
     alert('That file doesn’t look like a Bakery Log backup.');
   }
+});
+
+/* ---------- Keep the screen still ---------- */
+
+// On iPhones, the on-screen keyboard can push the whole page up and leave it
+// there after it closes (taking the search bar with it). Snap it back.
+function resetPageScroll() {
+  if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) {
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+  }
+}
+document.addEventListener('focusout', () => setTimeout(resetPageScroll, 100));
+window.visualViewport?.addEventListener('resize', () => {
+  if (window.visualViewport.height >= window.innerHeight - 1) resetPageScroll(); // keyboard closed
 });
 
 /* ---------- Start up ---------- */

@@ -23,7 +23,7 @@
 
       <div class="search-bar">
         <form id="search-form">
-          <input id="search-input" type="search" placeholder="Search Toronto bakeries…" autocomplete="off" enterkeyhint="search">
+          <input id="search-input" type="search" placeholder="Search Toronto bakeries…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
           <button type="submit">Search</button>
         </form>
         <ul id="search-results" hidden></ul>
@@ -52,7 +52,7 @@
         <button type="button" data-filter="visited">✓ Visited <span id="count-visited">0</span></button>
         <button type="button" data-filter="items">🥐 Items <span id="count-items">0</span></button>
       </div>
-      <input id="list-search" class="list-search" type="search" autocomplete="off" enterkeyhint="search">
+      <input id="list-search" class="list-search" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
       <div id="sort-bar" class="sort-bar"></div>
       <div id="list"></div>
     </section>
@@ -60,7 +60,7 @@
 
   <!-- Bakery info panel (slides up from the bottom) -->
   <div id="sheet" class="sheet" hidden>
-    <button id="sheet-close" class="sheet-close" type="button" aria-label="Close">✕</button>
+    <button id="sheet-close" class="sheet-close" type="button" aria-label="Done">✓</button>
     <div id="sheet-body"></div>
   </div>
 
@@ -74,7 +74,7 @@
     <form id="add-form">
       <h2>Add a bakery</h2>
       <label>Name
-        <input name="name" required placeholder="e.g. Blackbird Baking Co.">
+        <input name="name" required placeholder="e.g. Blackbird Baking Co." autocorrect="off" spellcheck="false">
       </label>
       <label>Address
         <input name="address" placeholder="Street address">

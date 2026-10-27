@@ -10,19 +10,21 @@
   --line: #eadfcd;
   --want: #d98e04;
   --visited: #4e7d3a;
-  --r-S: #6d3fc0;
-  --r-A: #2e8b57;
-  --r-B: #7aa83a;
-  --r-C: #d4a017;
-  --r-D: #e07b2c;
-  --r-F: #c8443a;
+  --r-S: #d4af37; /* gold */
+  --r-A: #5b9bf0; /* blue */
+  --r-B: #5cb85c; /* green */
+  --r-C: #f5d90a; /* yellow */
+  --r-D: #e5484d; /* red */
+  --r-F: #111111; /* black */
+  --danger: #c8443a;
   --tabbar-h: 60px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { position: fixed; inset: 0; } /* the page itself never scrolls; only panels inside it do */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--cream);
@@ -161,8 +163,8 @@ main {
 @keyframes slideup { from { transform: translateY(30px); opacity: 0; } }
 .sheet-close {
   position: absolute; top: 10px; right: 10px;
-  width: 34px; height: 34px; border-radius: 50%;
-  border: 0; background: var(--butter); font-size: 16px;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 0; background: var(--visited); color: #fff; font-size: 18px; font-weight: 700;
 }
 .title-input {
   width: calc(100% - 44px); font-size: 22px; font-weight: 700;
@@ -214,24 +216,26 @@ main {
   flex: 1; height: 38px; border-radius: 8px;
   border: 2px solid var(--line); background: #fff; font-weight: 800; color: var(--muted);
 }
-.ratings button.on { color: #fff; }
+.ratings button.on { color: #000; }
+.ratings button.on.r-F { color: #fff; }
 .ratings button.on.r-S { background: var(--r-S); border-color: var(--r-S); }
 .ratings button.on.r-A { background: var(--r-A); border-color: var(--r-A); }
 .ratings button.on.r-B { background: var(--r-B); border-color: var(--r-B); }
 .ratings button.on.r-C { background: var(--r-C); border-color: var(--r-C); }
 .ratings button.on.r-D { background: var(--r-D); border-color: var(--r-D); }
 .ratings button.on.r-F { background: var(--r-F); border-color: var(--r-F); }
-.item textarea {
-  width: 100%; resize: vertical; font-size: 15px; min-height: 44px;
+.item textarea, .bakery-notes {
+  width: 100%; resize: none; overflow: hidden; font-size: 15px; min-height: 44px;
   border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--cream);
 }
+.bakery-notes { display: block; margin-top: 10px; background: var(--card); }
 .add-item { width: 100%; padding: 12px; border: 2px dashed var(--line); background: none; border-radius: 14px; color: var(--crust); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .chip-btn {
   border: 1px solid var(--want); color: var(--want); background: #fff6e3;
   border-radius: 999px; padding: 6px 12px; font-size: 14px;
 }
-.danger { margin-top: 26px; width: 100%; background: none; border: 0; color: var(--r-F); padding: 10px; }
+.danger { margin-top: 26px; width: 100%; background: none; border: 0; color: var(--danger); padding: 10px; }
 
 /* ---------- List tab ---------- */
 #list-view { overflow-y: auto; padding: calc(16px + var(--safe-t)) 16px 24px; }
@@ -264,6 +268,8 @@ main {
   width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
   font-weight: 800; font-size: 13px; color: #fff; background: #bbb;
 }
+.badge[class*="r-"] { color: #000; }
+.badge.r-F { color: #fff; }
 .badge.r-S { background: var(--r-S); } .badge.r-A { background: var(--r-A); }
 .badge.r-B { background: var(--r-B); } .badge.r-C { background: var(--r-C); }
 .badge.r-D { background: var(--r-D); } .badge.r-F { background: var(--r-F); }
@@ -278,7 +284,7 @@ main {
 .sort-bar button.on { background: var(--crust); border-color: var(--crust); color: #fff; font-weight: 600; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .dot.open { background: #2e9e4f; }
-.dot.closed { background: var(--r-F); }
+.dot.closed { background: var(--danger); }
 .dot.unknown { background: #bbb; }
 .avg { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .list-search {
