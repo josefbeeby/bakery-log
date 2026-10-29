@@ -1,0 +1,3 @@
+# Local test-server settings for Claude Code; not part of the app
+.claude/
+.DS_Store
