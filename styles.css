@@ -229,6 +229,23 @@ main {
   border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--cream);
 }
 .bakery-notes { display: block; margin-top: 10px; background: var(--card); }
+.status-line { margin: 10px 0 0; font-weight: 600; font-size: 15px; }
+.status-line.want { color: var(--want); }
+.status-line.visited { color: var(--visited); }
+.status-line .been, .been-line { color: var(--visited); }
+.been-line { margin-top: 8px; display: flex; align-items: center; gap: 5px; }
+.tick {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px;
+  border: 2px solid var(--want); background: #fff; position: relative;
+}
+.tick:active { background: var(--visited); border-color: var(--visited); }
+.tick:active::after { content: '✓'; color: #fff; position: absolute; inset: 0; font-weight: 700; line-height: 20px; }
+.item.just-added { animation: highlight 1.6s ease-out; }
+@keyframes highlight { from { box-shadow: 0 0 0 3px var(--visited); } to { box-shadow: 0 0 0 3px transparent; } }
+.pin-been {
+  position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--visited); border: 2px solid #fff;
+}
 .add-item { width: 100%; padding: 12px; border: 2px dashed var(--line); background: none; border-radius: 14px; color: var(--crust); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .chip-btn {

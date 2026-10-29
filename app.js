@@ -3,7 +3,9 @@
  * Each bakery is saved as an object like this:
  * {
  *   id, name, address, lat, lng,
- *   status: 'want' | 'visited',
+ *   status: 'want' | 'visited'  (worked out automatically — see refreshStatus),
+ *   markedVisited: true if you chose "Have visited" when adding it,
+ *   notes: notes on the bakery itself,
  *   openingHours: 'Mo-Fr 07:00-18:00; Sa 08:00-16:00' (from OpenStreetMap, may be empty),
  *   osmId: 'node/123' (so the same place isn't added twice from search),
  *   wantToTry: [{ id, text }],
@@ -28,10 +30,37 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
 let bakeries = load();
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
-  catch { return []; }
+  let list;
+  try { list = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+  catch { list = []; }
+  // Bring bakeries saved by older versions of the app up to date.
+  list.forEach((b) => {
+    if (b.markedVisited === undefined) b.markedVisited = b.status === 'visited';
+    b.notes ??= '';
+    b.wantToTry ??= [];
+    b.items ??= [];
+    refreshStatus(b);
+  });
+  return list;
 }
+
+// You've been there if you said so when adding it, or you've logged anything you got.
+function beenThere(b) { return b.markedVisited || b.items.length > 0; }
+
+// A bakery is on your wish list while it has things left to try, or you've never been.
+// Otherwise it's visited.
+function refreshStatus(b) {
+  const status = b.wantToTry.length || !beenThere(b) ? 'want' : 'visited';
+  if (status === 'visited' && b.status !== 'visited') b.visitedAt = Date.now();
+  b.status = status;
+}
+
 function save() {
+  bakeries.forEach((b) => {
+    const before = b.status + beenThere(b);
+    refreshStatus(b);
+    if (markers[b.id] && before !== b.status + beenThere(b)) drawMarker(b); // pin changes colour
+  });
   localStorage.setItem(STORE_KEY, JSON.stringify(bakeries));
   renderList();
 }
@@ -53,11 +82,12 @@ let pendingPlace = null; // details of the place being added
 let placing = false;     // true while waiting for a tap in "Drop a pin" mode
 let openId = null;       // bakery currently shown in the info panel
 
-function pinIcon(status, selected = false) {
+function pinIcon(status, selected = false, beenBefore = false) {
   const symbol = status === 'visited' ? '✓' : status === 'want' ? '★' : '+';
   return L.divIcon({
     className: '',
-    html: `<div class="pin pin-${status}${selected ? ' selected' : ''}"><span>${symbol}</span></div>`,
+    html: `<div class="pin pin-${status}${selected ? ' selected' : ''}"><span>${symbol}</span></div>` +
+      (status === 'want' && beenBefore ? '<div class="pin-been" title="Been before"></div>' : ''),
     iconSize: [34, 34],
     iconAnchor: [17, 41], // the pin's point, after the -45° rotation
   });
@@ -65,7 +95,7 @@ function pinIcon(status, selected = false) {
 
 function drawMarker(b) {
   if (markers[b.id]) map.removeLayer(markers[b.id]);
-  const m = L.marker([b.lat, b.lng], { icon: pinIcon(b.status, b.id === openId), title: b.name }).addTo(map);
+  const m = L.marker([b.lat, b.lng], { icon: pinIcon(b.status, b.id === openId, beenThere(b)), title: b.name }).addTo(map);
   m.on('click', () => openSheet(b.id));
   markers[b.id] = m;
 }
@@ -465,13 +495,15 @@ function addBakery(place, status) {
     lng: place.lng,
     osmId: place.osmId,
     openingHours: place.openingHours,
-    status,
+    markedVisited: status === 'visited',
+    notes: '',
     wantToTry: [],
     items: [],
     createdAt: Date.now(),
-    visitedAt: status === 'visited' ? Date.now() : null,
+    visitedAt: null,
   };
   if (status === 'visited') b.items.push(newItem());
+  refreshStatus(b);
   bakeries.push(b);
   save();
   clearTemp();
@@ -614,7 +646,7 @@ $('#sheet-close').addEventListener('click', closeSheet);
 
 function focusLatest() {
   const b = getBakery(openId);
-  const el = b.status === 'visited'
+  const el = b.markedVisited || b.status === 'visited'
     ? [...sheetBody.querySelectorAll('.item-name')].pop()
     : sheetBody.querySelector('#try-input');
   el?.focus();
@@ -624,38 +656,41 @@ function renderSheet() {
   const b = getBakery(openId);
   if (!b) return;
   const hours = hoursToday(b);
+  const been = beenThere(b);
+  const statusLine = b.status === 'visited'
+    ? '<p class="status-line visited">✓ Visited</p>'
+    : `<p class="status-line want">★ On your wish list${been ? ' · <span class="been">✓ been before</span>' : ''}</p>`;
+
   let html = `
     ${openedByRandom ? '<button type="button" class="reroll" data-action="reroll">🎲 Pick another</button>' : ''}
     <input class="title-input" data-field="name" value="${esc(b.name)}" aria-label="Bakery name" autocorrect="off" spellcheck="false">
     ${b.address ? `<p class="meta">📍 ${esc(b.address)}</p>` : ''}
     ${hours ? `<p class="meta hours">🕒 ${esc(hours)}</p>` : ''}
-    ${b.status === 'visited' ? `<textarea class="bakery-notes" data-field="bakery-notes" rows="2"
-      placeholder="Notes on the bakery itself (vibe, service, seating, prices…)">${esc(b.notes || '')}</textarea>` : ''}
-    <div class="status-toggle">
-      <button type="button" data-action="status" data-status="want" class="want ${b.status === 'want' ? 'on' : ''}">★ Want to visit</button>
-      <button type="button" data-action="status" data-status="visited" class="visited ${b.status === 'visited' ? 'on' : ''}">✓ Visited</button>
-    </div>`;
+    ${statusLine}
+    <textarea class="bakery-notes" data-field="bakery-notes" rows="2"
+      placeholder="Notes on the bakery itself (vibe, service, seating, prices…)">${esc(b.notes)}</textarea>
 
-  if (b.status === 'want') {
-    html += `
-      <h3 class="section-title">Things I want to try</h3>
-      <p class="prompt">Is there anything specific you want to try here?</p>
-      <ul class="try-list">
-        ${b.wantToTry.map((t) => `<li><span>${esc(t.text)}</span>
-          <button type="button" class="x-btn" data-action="del-try" data-id="${t.id}" aria-label="Remove">×</button></li>`).join('')}
-      </ul>
-      <form class="add-row" id="try-form">
-        <input id="try-input" placeholder="e.g. Pistachio croissant" enterkeyhint="done">
-        <button type="submit" class="primary">Add</button>
-      </form>`;
+    <h3 class="section-title">Want to try</h3>
+    ${b.wantToTry.length
+      ? '<p class="prompt">Tick it off once you’ve tried it — it moves down to “What I got”.</p>'
+      : '<p class="prompt">Is there anything specific you want to try here?</p>'}
+    <ul class="try-list">
+      ${b.wantToTry.map((t) => `<li>
+        <button type="button" class="tick" data-action="tried" data-id="${t.id}" aria-label="Tried ${esc(t.text)}"></button>
+        <span>${esc(t.text)}</span>
+        <button type="button" class="x-btn" data-action="del-try" data-id="${t.id}" aria-label="Remove">×</button></li>`).join('')}
+    </ul>
+    <form class="add-row" id="try-form">
+      <input id="try-input" placeholder="e.g. Pistachio croissant" enterkeyhint="done">
+      <button type="submit" class="primary">Add</button>
+    </form>
+
+    <h3 class="section-title">What I got</h3>`;
+
+  if (!b.items.length) {
+    html += `<button type="button" class="add-item" data-action="add-item">+ Log something I got</button>`;
   } else {
     html += `
-      <h3 class="section-title">What I got</h3>
-      <p class="prompt">Add each item you tried, give it a grade, and jot down any notes.</p>
-      ${b.wantToTry.length ? `
-        <p class="prompt">From your to-try list (tap to add):</p>
-        <div class="chips">${b.wantToTry.map((t) =>
-          `<button type="button" class="chip-btn" data-action="try-to-item" data-id="${t.id}">+ ${esc(t.text)}</button>`).join('')}</div>` : ''}
       ${b.items.map((it) => `
         <div class="item" data-item="${it.id}">
           <div class="item-top">
@@ -731,25 +766,20 @@ sheetBody.addEventListener('click', (e) => {
   const item = itemEl && b.items.find((i) => i.id === itemEl.dataset.item);
 
   switch (btn.dataset.action) {
-    case 'status':
-      if (b.status === btn.dataset.status) return;
-      b.status = btn.dataset.status;
-      if (b.status === 'visited') {
-        b.visitedAt = b.visitedAt || Date.now();
-        if (!b.items.length && !b.wantToTry.length) b.items.push(newItem());
-      }
-      save();
-      drawMarker(b);
-      renderSheet();
-      return;
     case 'del-try':
       b.wantToTry = b.wantToTry.filter((t) => t.id !== btn.dataset.id);
       break;
-    case 'try-to-item': {
+    case 'tried': { // ticked off: move it into "What I got", ready to grade
       const t = b.wantToTry.find((x) => x.id === btn.dataset.id);
       b.wantToTry = b.wantToTry.filter((x) => x !== t);
-      b.items.push(newItem(t.text));
-      break;
+      const it = newItem(t.text);
+      b.items.push(it);
+      save();
+      renderSheet();
+      const box = sheetBody.querySelector(`[data-item="${it.id}"]`);
+      box.classList.add('just-added');
+      box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return;
     }
     case 'add-item':
       b.items.push(newItem());
@@ -880,6 +910,11 @@ function renderList() {
       const status = openStatus(b);
       if (b.openingHours) body += `<p class="meta hours"><span class="dot ${status.state}"></span>${esc(status.text)}</p>`;
       if (b.wantToTry.length) body += `<p class="sub">Want to try</p><ul>${b.wantToTry.map((t) => `<li>${esc(t.text)}</li>`).join('')}</ul>`;
+      if (beenThere(b)) {
+        const avg = averageScore(b);
+        body += `<p class="meta been-line">✓ Been before${avg !== null
+          ? ` · avg <span class="badge r-${RATINGS[Math.round(avg)]}">${RATINGS[Math.round(avg)]}</span>` : ''}</p>`;
+      }
     } else {
       const avg = averageScore(b);
       if (avg !== null) side = `<span class="avg">avg <span class="badge r-${RATINGS[Math.round(avg)]}">${RATINGS[Math.round(avg)]}</span></span>`;
@@ -1015,6 +1050,33 @@ document.addEventListener('focusout', () => setTimeout(resetPageScroll, 100));
 window.visualViewport?.addEventListener('resize', () => {
   if (window.visualViewport.height >= window.innerHeight - 1) resetPageScroll(); // keyboard closed
 });
+
+// When the phone keyboard opens, shrink the panel to the space above it and
+// scroll the box you're typing in into view.
+function fitSheetAboveKeyboard() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  if (keyboard > 80) {
+    sheet.style.bottom = `${keyboard}px`;
+    sheet.style.maxHeight = `${Math.round(vv.height * 0.9)}px`;
+  } else {
+    sheet.style.bottom = '';
+    sheet.style.maxHeight = '';
+  }
+  keepTypingVisible();
+  setTimeout(keepTypingVisible, 150); // once the panel has settled
+}
+function keepTypingVisible() {
+  const el = document.activeElement;
+  if (sheet.hidden || !el || !sheet.contains(el)) return;
+  const box = sheet.getBoundingClientRect(), r = el.getBoundingClientRect();
+  if (r.bottom > box.bottom - 16) sheet.scrollTop += r.bottom - box.bottom + 32;
+  else if (r.top < box.top + 16) sheet.scrollTop -= box.top - r.top + 32;
+}
+window.visualViewport?.addEventListener('resize', fitSheetAboveKeyboard);
+window.visualViewport?.addEventListener('scroll', fitSheetAboveKeyboard);
+sheet.addEventListener('focusin', () => setTimeout(fitSheetAboveKeyboard, 350)); // after the keyboard slides up
 
 /* ---------- Start up ---------- */
 
